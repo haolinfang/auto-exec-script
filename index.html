@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>编译脚本执行器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        /* 表单行 - 标签和控件在同一行 */
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        
+        .form-item {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        
+        /* 复选框容器 */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .form-label {
+            font-weight: bold;
+            color: #34495e;
+            white-space: nowrap;
+            margin-right: 10px;
+            min-width: 80px;
+            text-align: right;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #34495e;
+        }
+        
+        .checkbox-label input {
+            width: auto;
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        select, input {
+            padding: 10px 12px;
+            font-size: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f8f9fa;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3498db;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        button {
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 10px 20px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(106, 17, 203, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(106, 17, 203, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #output {
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            border: 2px solid #333;
+            border-radius: 8px;
+            text-align: left;
+            font-family: 'Consolas', 'Monaco', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+            line-height: 1.5;
+            color: #e0e0e0;
+            font-size: 13px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        #output .success { color: #4CAF50; }
+        #output .error { color: #f44336; }
+        #output .warning { color: #ff9800; }
+        #output .info { color: #2196F3; }
+        #output .timestamp { color: #888; }
+        
+        .status {
+            font-weight: bold;
+            margin: 20px;
+            font-size: 18px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        
+        .success { 
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+        
+        .error { 
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+        
+        .warning { 
+            color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+        }
+        
+        .loading {
+            display: none;
+            margin: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info {
+            color: #666;
+            margin: 15px 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* 控制按钮组 */
+        .controls {
+            margin: 5px 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            padding: 5px 20px;
+            font-size: 14px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .control-btn:disabled {
+            background: #a0a0a0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                margin: 20px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .form-item, .checkbox-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .form-label {
+                text-align: left;
+                margin-bottom: 5px;
+                min-width: auto;
+            }
+            
+            .checkbox-label {
+                width: 100%;
+            }
+            
+            select, input {
+                width: 100%;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .control-btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+        
+        /* 版本号选择器样式 */
+        optgroup {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        option {
+            padding: 8px;
+        }
+        
+        /* 滚动条样式 */
+        #output::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        #output::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 5px;
+        }
+        
+        #output::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 5px;
+        }
+        
+        #output::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>移动应用编译工具</h1>
+        <p class="info">选择编译类型和版本号，点击"开始编译"按钮进行编译操作</p>
+        
+        <!-- 第一行：编译类型和版本号 -->
+        <div class="form-row">
+            <div class="form-item">
+                <span class="form-label">编译类型:</span>
+                <select id="type">
+                    <option value="android">Android</option>
+                    <option value="ios">iOS</option>
+                </select>
+            </div>
+            
+            <div class="form-item">
+                <span class="form-label">版本号:</span>
+                <select id="version">
+                    <optgroup label="Android">
+                        <option value="2.4.9">2.4.9</option>
+                        <option value="2.5.3" selected>2.5.3</option>
+                    </optgroup>
+                    <optgroup label="iOS">
+                        <option value="2.0.5">2.0.5</option>
+                        <option value="2.5.3">2.5.3</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        
+        <!-- 第二行：复选框和热更新描述 -->
+        <div class="form-row">
+            <div class="checkbox-item">
+                <div class="checkbox-label">
+                    <input type="checkbox" id="pushHotUpdate" checked>
+                    <span>编译完成后自动推送热更新</span>
+                </div>
+            </div>
+            
+            <div class="form-item">
+                <span class="form-label">热更新描述:</span>
+                <input type="text" id="hotUpdateDesc" placeholder="自动编译推送">
+            </div>
+        </div>
+        
+        <button id="runBtn">🚀 开始编译</button>
+        
+        <div class="controls">
+            <button id="clearBtn" class="control-btn">🗑️ 清空输出</button>
+            <button id="scrollBtn" class="control-btn">📜 自动滚动</button>
+            <button id="stopBtn" class="control-btn" disabled>⏹️ 停止编译</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在编译中，请稍候...</p>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div id="output">
+等待编译...
+        </div>
+        
+        <div class="info">
+            <p>🔹 编译过程可能需要几分钟时间，请耐心等待...</p>
+            <p>🔹 输出区域会实时显示编译进度和日志信息</p>
+            <p>🔹 可随时使用"停止编译"按钮中断当前编译任务</p>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentController = null;
+        let autoScrollEnabled = true;
+        
+        // 获取DOM元素
+        const runBtn = document.getElementById('runBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const scrollBtn = document.getElementById('scrollBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+        const loading = document.getElementById('loading');
+        
+        // 格式化时间戳
+        function getTimestamp() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+        
+        // 添加输出行
+        function addOutputLine(text, className = '') {
+            const timestamp = `<span class="timestamp">[${getTimestamp()}]</span>`;
+            const line = document.createElement('div');
+            line.innerHTML = timestamp + ' ' + text;
+            if (className) {
+                line.className = className;
+            }
+            output.appendChild(line);
+            
+            // 自动滚动到底部
+            if (autoScrollEnabled) {
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        
+        // 清空输出
+        clearBtn.addEventListener('click', () => {
+            output.innerHTML = '';
+            addOutputLine('输出已清空', 'info');
+        });
+        
+        // 切换自动滚动
+        scrollBtn.addEventListener('click', () => {
+            autoScrollEnabled = !autoScrollEnabled;
+            scrollBtn.textContent = autoScrollEnabled ? '📜 自动滚动' : '📜 手动滚动';
+            scrollBtn.style.background = autoScrollEnabled ? '#6c757d' : '#ff9800';
+            
+            if (autoScrollEnabled) {
+                output.scrollTop = output.scrollHeight;
+            }
+        });
+        
+        // 停止编译
+        stopBtn.addEventListener('click', () => {
+            if (currentController) {
+                currentController.abort();
+                addOutputLine('编译已停止', 'warning');
+                runBtn.disabled = false;
+                runBtn.textContent = '🚀 开始编译';
+                loading.style.display = 'none';
+                stopBtn.disabled = true;
+                status.textContent = '⚠️ 编译已停止';
+                status.className = 'status warning';
+            }
+        });
+        
+        // 开始编译
+        runBtn.addEventListener('click', function() {
+            const btn = this;
+            const type = document.getElementById('type').value;
+            const version = document.getElementById('version').value;
+            const pushHotUpdate = document.getElementById('pushHotUpdate').checked;
+            const hotUpdateDesc = document.getElementById('hotUpdateDesc').value || "自动编译推送";
+            
+            // 验证版本号选择是否匹配
+            if ((type === 'android' && !['2.4.9', '2.5.3'].includes(version)) ||
+                (type === 'ios' && !['2.0.5', '2.5.3'].includes(version))) {
+                alert(`错误：${type} 不支持版本 ${version}\n\nAndroid支持：2.4.9, 2.5.3\niOS支持：2.0.5, 2.5.3`);
+                return;
+            }
+            
+            // 清空之前的输出
+            output.innerHTML = '';
+            
+            // 显示初始信息
+            addOutputLine(`开始编译 ${type} ${version}...`, 'info');
+            addOutputLine(`热更新推送: ${pushHotUpdate ? '是' : '否'}`, 'info');
+            if (pushHotUpdate) {
+                let desc = hotUpdateDesc;
+                if (desc === "自动编译推送") {
+                    desc = `自动编译推送 ${type} ${version}`;
+                }
+                addOutputLine(`热更新描述: ${desc}`, 'info');
+            }
+            addOutputLine('='.repeat(50), 'info');
+            
+            // 显示加载状态
+            btn.disabled = true;
+            btn.textContent = '⏳ 编译中...';
+            loading.style.display = 'block';
+            status.textContent = '🔄 编译进行中...';
+            status.className = 'status';
+            stopBtn.disabled = false;
+            scrollBtn.disabled = false;
+            
+            // 创建AbortController以便可以取消请求
+            currentController = new AbortController();
+            const signal = currentController.signal;
+            
+            // 构建URL参数
+            const params = new URLSearchParams({
+                type: type,
+                version: version,
+                push: pushHotUpdate,
+                desc: hotUpdateDesc === "自动编译推送" ? `自动编译推送 ${type} ${version}` : hotUpdateDesc
+            });
+            
+            // 使用fetch流式读取响应
+            fetch(`/compile?${params.toString()}`, {
+                signal: signal
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                
+                // 读取流数据
+                function readStream() {
+                    return reader.read().then(({done, value}) => {
+                        if (done) {
+                            return;
+                        }
+                        
+                        // 解码并显示数据
+                        const text = decoder.decode(value, {stream: true});
+                        if (text.trim()) {
+                            // 根据内容类型添加颜色
+                            const lines = text.split('\n');
+                            lines.forEach(line => {
+                                if (line.trim()) {
+                                    let className = '';
+                                    if (line.includes('[SUCCESS]') || line.includes('✅') || line.includes('成功')) {
+                                        className = 'success';
+                                    } else if (line.includes('[ERROR]') || line.includes('❌') || line.includes('失败') || line.includes('错误')) {
+                                        className = 'error';
+                                    } else if (line.includes('[WARNING]') || line.includes('⚠️') || line.includes('警告')) {
+                                        className = 'warning';
+                                    } else if (line.includes('[INFO]')) {
+                                        className = 'info';
+                                    }
+                                    addOutputLine(line, className);
+                                }
+                            });
+                        }
+                        
+                        // 继续读取
+                        return readStream();
+                    });
+                }
+                
+                return readStream();
+            })
+            .then(() => {
+                // 流读取完成
+                addOutputLine('='.repeat(50), 'info');
+                addOutputLine('✅ 编译完成！', 'success');
+                status.textContent = '✅ 编译完成';
+                status.className = 'status success';
+            })
+            .catch(error => {
+                if (error.name === 'AbortError') {
+                    console.log('请求已中止');
+                    return;
+                }
+                
+                console.error('编译错误:', error);
+                addOutputLine(`❌ 错误: ${error.message}`, 'error');
+                status.textContent = '❌ 编译失败';
+                status.className = 'status error';
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = '🚀 开始编译';
+                loading.style.display = 'none';
+                stopBtn.disabled = true;
+                currentController = null;
+            });
+        });
+        
+        // 当类型改变时，自动选择对应的版本
+        document.getElementById('type').addEventListener('change', function() {
+            const type = this.value;
+            const versionSelect = document.getElementById('version');
+            
+            // 根据类型设置默认版本
+            if (type === 'android') {
+                versionSelect.value = '2.5.3';
+            } else {
+                versionSelect.value = '2.0.5';
+            }
+        });
+        
+        // 初始化
+        addOutputLine('就绪 - 选择参数后点击"开始编译"按钮', 'info');
+    </script>
+</body>
+</html>
